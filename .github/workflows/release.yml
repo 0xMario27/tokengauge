@@ -2,6 +2,7 @@ name: Build & Release
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 
@@ -21,10 +22,17 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
-      # Keep artifact names in sync with the release tag (v0.2.0 -> 0.2.0)
-      - name: Sync version with tag
-        if: startsWith(github.ref, 'refs/tags/')
-        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version
+      # Version: tag push uses the tag (v0.2.0 -> 0.2.0); plain pushes auto-bump
+      # <pkg-version>-<run_number> (0.1.0-5, 0.1.0-6, ...) - monotonically increasing.
+      - name: Resolve version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VER="${GITHUB_REF_NAME#v}"
+          else
+            VER="$(node -p "require('./package.json').version")-${{ github.run_number }}"
+          fi
+          echo "VER=${VER}" >> "$GITHUB_ENV"
+          npm version "${VER}" --no-git-tag-version
 
       - name: Build arm64
         run: npx electron-builder --mac --arm64 --publish never
@@ -41,7 +49,7 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
-      - name: Publish to GitHub Release
+      - name: Publish release (tag push)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
@@ -51,12 +59,17 @@ jobs:
             release/*.blockmap
           fail_on_unmatched_files: true
 
-      - name: Upload artifacts (non-tag runs)
+      # Plain pushes: publish an auto-versioned prerelease (tag auto-created).
+      - name: Publish prerelease (plain push)
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/upload-artifact@v4
+        uses: softprops/action-gh-release@v2
         with:
-          name: TokenGauge-builds
-          path: |
+          tag_name: v${{ env.VER }}
+          name: v${{ env.VER }}
+          prerelease: true
+          generate_release_notes: true
+          files: |
             release/*.dmg
             release/*.zip
-          retention-days: 14
+            release/*.blockmap
+          fail_on_unmatched_files: true
