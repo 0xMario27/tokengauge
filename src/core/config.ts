@@ -18,7 +18,7 @@ export const DEFAULT_CONFIG: WidgetConfig = { refreshIntervalSec: 30, accounts: 
 // macOS 常规应用数据目录（应用名子目录下）；Electron 的 app.getPath('userData') 同此。
 export function defaultConfigPath(): string {
   const home = process.env.HOME || '';
-  return path.join(home, 'Library', 'Application Support', 'ark-usage-widget', 'config.json');
+  return path.join(home, 'Library', 'Application Support', 'TokenGauge', 'config.json');
 }
 
 function normalizeCredentials(raw: any): Record<string, string> {

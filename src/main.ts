@@ -115,7 +115,7 @@ function createTray() {
   icon.setTemplateImage(true); // macOS 深浅色菜单栏自动反色
   if (isSmoke) console.log('TRAY_ICON size=', icon.getSize().width, 'empty=', icon.isEmpty());
   tray = new Tray(icon);
-  tray.setToolTip('Ark 用量便签');
+  tray.setToolTip('TokenGauge');
   // 左键：任何时候直接显示窗口；右键：弹出菜单（不用 setContextMenu，否则左键也会弹菜单）
   tray.on('click', () => { if (win) { win.show(); win.focus(); } });
   const menu = Menu.buildFromTemplate([
