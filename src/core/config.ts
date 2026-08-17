@@ -11,6 +11,8 @@ export interface AccountConfig {
 export interface WidgetConfig {
   refreshIntervalSec: number;
   accounts: AccountConfig[];
+  /** UI language; undefined = follow the system locale */
+  locale?: 'zh' | 'en';
 }
 
 export const DEFAULT_CONFIG: WidgetConfig = { refreshIntervalSec: 30, accounts: [] };
@@ -65,7 +67,8 @@ export function normalizeConfig(raw: any): WidgetConfig {
     typeof raw?.refreshIntervalSec === 'number' && raw.refreshIntervalSec >= 5
       ? Math.round(raw.refreshIntervalSec)
       : DEFAULT_CONFIG.refreshIntervalSec;
-  return { refreshIntervalSec: interval, accounts };
+  const locale = raw?.locale === 'zh' || raw?.locale === 'en' ? raw.locale : undefined;
+  return locale ? { refreshIntervalSec: interval, accounts, locale } : { refreshIntervalSec: interval, accounts };
 }
 
 export function loadConfig(filePath: string): WidgetConfig {
