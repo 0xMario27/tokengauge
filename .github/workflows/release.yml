@@ -22,6 +22,10 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
+      # dist/ is gitignored (tsc output); compile before packaging
+      - name: Compile TypeScript
+        run: npm run build
+
       # Version: tag push uses the tag (v0.2.0 -> 0.2.0); plain pushes auto-bump
       # <pkg-version>-<run_number> (0.1.0-5, 0.1.0-6, ...) - monotonically increasing.
       - name: Resolve version
