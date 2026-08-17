@@ -57,7 +57,7 @@ make dist-universal  # both arches in one dmg (twice the size)
 (or `npm run dist` / `npm run dist:x64`; `make help` lists everything)
 
 - Icons: `node scripts/gen-app-icon.js` regenerates the master, then re-run the icns step (see scripts/)
-- **Sharing with friends**: send them the dmg; drag into /Applications. Unsigned/notarization-free, so the first
+- **Sharing with friends**: send them the dmg; drag into /Applications. Signed but not notarized, so the first
   open needs **right click -> Open -> Open** (or System Settings -> Privacy & Security -> Open Anyway).
 - Packaged and dev builds share `~/Library/Application Support/TokenGauge/` and a single-instance lock, so only one
   can run at a time.
