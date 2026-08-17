@@ -4,9 +4,9 @@
 <meta charset="utf-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'" />
 <style>
-  /* macOS 26 Liquid Glass：大圆角同心 + 胶囊控件 + 镜面高光；玻璃只用于容器，内容层保持清晰 */
+  /* macOS 26 Liquid Glass: concentric large radii + capsule controls + mirror highlight; glass only on containers, content stays crisp */
   :root {
-    /* 干净的中性玻璃：黑色半透明（macOS dark material，#1C1C1E 系 + 白色 label 层） */
+    /* Clean neutral glass: translucent black (macOS dark material, #1C1C1E family + white label layer) */
     --bg-glass: rgba(28,28,30,.85); --bg-solid: #1C1C1E;
     --border-glass: rgba(255,255,255,.13); --highlight: rgba(255,255,255,.08);
     --text: rgba(235,235,245,.72); --strong: rgba(255,255,255,.95);
@@ -25,8 +25,8 @@
   }
   @media (prefers-color-scheme: light) {
     :root {
-      /* 干净的中性玻璃：白色半透明（macOS light material，纯白 + rgba(60,60,67,x) label 层） */
-      /* macOS 浅色材料：高不透明度（~92%），blur 只透色不透形 */
+      /* Clean neutral glass: translucent white (macOS light material, pure white + rgba(60,60,67,x) label layer) */
+      /* macOS light material: high opacity (~92%), blur passes color but not shape */
       --bg-glass: rgba(255,255,255,.92); --bg-solid: #F6F6F6;
       --border-glass: rgba(0,0,0,.12); --highlight: rgba(255,255,255,.9);
       --text: rgba(0,0,0,.7); --strong: rgba(0,0,0,.92);
@@ -57,7 +57,7 @@
     box-shadow: 0 24px 56px var(--shadow), inset 0 1px 0 var(--highlight);
     display: flex; flex-direction: column; color: var(--text);
   }
-  /* 镜面高光（玻璃层，不覆盖内容层） */
+  /* Mirror highlight (glass layer, does not cover content) */
   .note::after {
     content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
     background: linear-gradient(155deg, rgba(255,255,255,.12), rgba(255,255,255,0) 42%);
@@ -97,7 +97,7 @@
   .err svg { width: 10px; height: 10px; flex-shrink: 0; margin-top: 1px; }
   .empty { text-align: center; color: var(--faint); font-size: 10.5px; padding: 48px 0; line-height: 2.1; cursor: pointer; border-radius: 10px; }
   .empty:hover { color: var(--dim); }
-  /* ── DeepSeek 时段时间轴 ── */
+  /* ── DeepSeek hours timeline ── */
   .ds { position: relative; z-index: 1; padding: 8px 2px 1px; border-top: 1px solid var(--divider); flex-shrink: 0; }
   .ds-head { display: flex; align-items: baseline; gap: 6px; margin-bottom: 5px; }
   .ds-name { font-size: 9px; color: var(--dim); letter-spacing: .3px; }
@@ -118,7 +118,7 @@
   .ds-next { font-size: 8.5px; color: var(--faint); margin-top: 2px; text-align: right; font-variant-numeric: tabular-nums; }
   .hidden { display: none !important; }
 
-  /* ── 设置：玻璃卡片 + 填充式圆角输入 + 胶囊按钮 ── */
+  /* ── Settings: glass card + filled rounded inputs + capsule buttons ── */
   .modal { position: fixed; inset: 0; background: rgba(0,0,0,.38); display: flex; align-items: center; justify-content: center; z-index: 10; }
   .modal-card {
     background: var(--bg-glass);
@@ -192,12 +192,12 @@
 </head>
 <body>
   <div class="note">
-    <div class="drag-zone" title="拖动移动"><span class="grip"><i></i><i></i><i></i></span></div>
+    <div class="drag-zone" title="Drag to move"><span class="grip"><i></i><i></i><i></i></span></div>
     <div id="accounts" class="accounts"></div>
-    <div id="empty" class="empty hidden">暂无账号<br />点菜单栏图标 · 设置</div>
+    <div id="empty" class="empty hidden">No accounts yet<br />Click the tray icon · Settings</div>
     <div id="dsTimeline" class="ds">
       <div class="ds-head">
-        <span class="ds-name">DeepSeek 时段</span>
+        <span class="ds-name">DeepSeek hours</span>
         <span id="dsStatus" class="ds-status">--</span>
       </div>
       <div class="ds-track">
@@ -212,27 +212,27 @@
 
   <div id="settingsModal" class="modal hidden">
     <div class="modal-card">
-      <h2>设置</h2>
-      <h3>刷新</h3>
-      <label>自动间隔（秒）<input id="intervalInput" type="number" min="5" step="5" /></label>
-      <h3>账号</h3>
+      <h2>Settings</h2>
+      <h3>Refresh</h3>
+      <label>Auto interval (s)<input id="intervalInput" type="number" min="5" step="5" /></label>
+      <h3>Accounts</h3>
       <div id="accountList"></div>
-      <h3>添加 / 编辑</h3>
+      <h3>Add / Edit</h3>
       <div class="form">
-        <input id="fAlias" placeholder="别名（如：主力）" />
+        <input id="fAlias" placeholder="Alias (e.g. primary)" />
         <select id="fProvider"></select>
         <div id="fFields"></div>
         <div class="form-row">
-          <button id="addBtn" class="btn btn-primary">添加</button>
-          <button id="cancelEditBtn" class="btn hidden">取消编辑</button>
+          <button id="addBtn" class="btn btn-primary">Add</button>
+          <button id="cancelEditBtn" class="btn hidden">Cancel</button>
         </div>
       </div>
       <div id="pluginErrors" class="plugin-errors hidden"></div>
       <div class="modal-actions">
-        <button id="showFolderBtn" class="btn">配置文件</button>
-        <button id="openPluginsBtn" class="btn">插件目录</button>
-        <button id="deleteAllBtn" class="btn btn-danger">删除全部</button>
-        <button id="modalCloseBtn" class="btn btn-primary push-right">完成</button>
+        <button id="showFolderBtn" class="btn">Config file</button>
+        <button id="openPluginsBtn" class="btn">Plugins folder</button>
+        <button id="deleteAllBtn" class="btn btn-danger">Delete all</button>
+        <button id="modalCloseBtn" class="btn btn-primary push-right">Done</button>
       </div>
       <div id="cfgPath" class="cfg-path"></div>
     </div>
