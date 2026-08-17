@@ -1,4 +1,7 @@
 import { createHash, createHmac } from 'node:crypto';
+import { ProviderDef, Tier, UsageResult } from '../provider';
+
+export type { Tier, UsageResult };
 
 // 从 cc-switch src-tauri/src/services/coding_plan.rs 移植的火山引擎控制面 OpenAPI 逻辑
 // （签名 V4 + GetAFPUsage/GetCodingPlanUsage 探测 + 档位解析），保持逐字一致。
@@ -17,10 +20,7 @@ export const TIER_FIVE_HOUR = '5小时';
 export const TIER_WEEKLY = '7天';
 export const TIER_MONTHLY = '每月';
 
-export interface Tier { name: string; utilization: number; resetsAt?: string | null; }
-export interface UsageResult {
-  ok: boolean; plan?: string; tiers: Tier[]; error?: string; queriedAt: number;
-}
+
 
 function sha256Hex(data: Buffer | string): string { return createHash('sha256').update(data).digest('hex'); }
 function hmacSha256(key: Buffer | string, data: Buffer | string): Buffer { return createHmac('sha256', key).update(data).digest(); }
@@ -191,6 +191,20 @@ export function parseCodingPlanTiers(result: any): Tier[] {
   }
   return tiers;
 }
+
+/** Provider 注册形态：凭据字典 -> 用量结果 */
+export const volcengineProvider: ProviderDef = {
+  id: 'volcengine',
+  name: '火山方舟',
+  fields: [
+    { key: 'accessKeyId', label: 'AccessKey ID', type: 'text' },
+    { key: 'secretAccessKey', label: 'SecretAccessKey', type: 'password' },
+    { key: 'region', label: 'Region', type: 'text', placeholder: 'cn-beijing', optional: true },
+  ],
+  query(creds) {
+    return queryVolcengineUsage(creds.accessKeyId, creds.secretAccessKey, creds.region);
+  },
+};
 
 export async function queryVolcengineUsage(
   accessKeyId: string, secretAccessKey: string, region?: string,

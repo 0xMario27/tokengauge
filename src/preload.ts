@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('arkAPI', {
   saveConfig: (cfg: unknown) => ipcRenderer.invoke('save-config', cfg),
   deleteConfig: () => ipcRenderer.invoke('delete-config'),
   showConfigFolder: () => ipcRenderer.invoke('show-config-folder'),
+  openPluginsFolder: () => ipcRenderer.invoke('open-plugins-folder'),
   onOpenSettings: (cb: () => void) => {
     const h = () => cb();
     ipcRenderer.on('open-settings', h);

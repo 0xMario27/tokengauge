@@ -20,7 +20,8 @@
     "files": [
       "dist/**/*",
       "src/renderer/index.html",
-      "scripts/tray-icon.png"
+      "scripts/tray-icon.png",
+      "providers/**/*"
     ],
     "mac": {
       "category": "public.app-category.utilities",

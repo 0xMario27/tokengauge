@@ -1,9 +1,11 @@
 // 渲染层：纯脚本（module:none 输出），类型与 core 冗余声明，无运行时依赖
-interface AccountConfig { alias: string; accessKeyId: string; secretAccessKey: string; region?: string; }
+interface FieldDef { key: string; label: string; type?: 'text' | 'password'; placeholder?: string; optional?: boolean; }
+interface ProviderInfo { id: string; name: string; fields: FieldDef[]; }
+interface AccountConfig { provider: string; alias: string; credentials: Record<string, string>; }
 interface WidgetConfig { refreshIntervalSec: number; accounts: AccountConfig[]; }
 interface Tier { name: string; utilization: number; resetsAt?: string | null; }
 interface UsageResult { ok: boolean; plan?: string; tiers: Tier[]; error?: string; queriedAt: number; alias: string; }
-interface WidgetState { config: WidgetConfig; usage: UsageResult[]; updating: boolean; }
+interface WidgetState { config: WidgetConfig; usage: UsageResult[]; updating: boolean; providers: ProviderInfo[]; providerErrors: { file: string; error: string }[]; }
 interface ArkAPI {
   getState(): Promise<WidgetState>;
   getConfigPath(): Promise<string>;
@@ -11,6 +13,7 @@ interface ArkAPI {
   saveConfig(cfg: unknown): Promise<WidgetState>;
   deleteConfig(): Promise<WidgetState>;
   showConfigFolder(): Promise<void>;
+  openPluginsFolder(): Promise<void>;
   quit(): Promise<void>;
   onUsageUpdate(cb: (s: WidgetState) => void): () => void;
   onOpenSettings(cb: () => void): () => void;
@@ -33,6 +36,56 @@ function escapeHtml(s: string): string {
 
 function maskAk(ak: string): string {
   return ak.length > 8 ? ak.slice(0, 4) + '…' + ak.slice(-4) : '***';
+}
+
+function providerName(id: string): string {
+  return state?.providers.find((p) => p.id === id)?.name ?? id;
+}
+
+function providerFields(id: string): FieldDef[] {
+  return state?.providers.find((p) => p.id === id)?.fields ?? [];
+}
+
+/** 按选中 provider 的 fields 动态渲染凭据输入框；editCreds 非空时预填 */
+function renderFormFields(providerId: string, editCreds?: Record<string, string>): void {
+  const box = $('fFields');
+  box.innerHTML = '';
+  for (const f of providerFields(providerId)) {
+    const input = document.createElement('input');
+    input.dataset.credKey = f.key;
+    input.dataset.optional = f.optional ? '1' : '';
+    if (f.type === 'password') input.type = 'password';
+    input.placeholder = f.label + (f.optional ? '（可选）' : '') + (f.placeholder ? ' · ' + f.placeholder : '');
+    if (editCreds && typeof editCreds[f.key] === 'string') input.value = editCreds[f.key];
+    box.appendChild(input);
+  }
+}
+
+/** 从动态表单收集凭据（trim；可选项留空则省略） */
+function collectCreds(): Record<string, string> {
+  const creds: Record<string, string> = {};
+  const inputs = document.querySelectorAll('#fFields input[data-cred-key]');
+  for (let i = 0; i < inputs.length; i++) {
+    const el = inputs[i] as HTMLInputElement;
+    const v = el.value.trim();
+    if (v !== '' || el.dataset.optional !== '1') {
+      if (v === '') throw new Error((el.placeholder || '字段') + ' 不能为空');
+      creds[el.dataset.credKey!] = v;
+    }
+  }
+  return creds;
+}
+
+function renderProviderSelect(selected: string): void {
+  const sel = $('fProvider') as HTMLSelectElement;
+  sel.innerHTML = '';
+  for (const p of state?.providers ?? []) {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  }
+  sel.value = selected;
 }
 
 // 自适应重置倒计时：<1h mm:ss，<24h hh:mm:ss，>=24h Xd Yh
@@ -146,14 +199,21 @@ function openSettings() {
   editingIndex = -1;
   (document.getElementById('intervalInput') as HTMLInputElement).value = String(state.config.refreshIntervalSec);
   (document.getElementById('fAlias') as HTMLInputElement).value = '';
-  (document.getElementById('fAk') as HTMLInputElement).value = '';
-  (document.getElementById('fSk') as HTMLInputElement).value = '';
-  (document.getElementById('fRegion') as HTMLInputElement).value = '';
   (document.getElementById('addBtn') as HTMLButtonElement).textContent = '添加';
   (document.getElementById('cancelEditBtn') as HTMLElement).classList.add('hidden');
+  renderProviderSelect(state.providers[0]?.id ?? '');
+  renderFormFields(state.providers[0]?.id ?? '');
   renderAccountList();
+  renderPluginErrors();
   $('settingsModal').classList.remove('hidden');
   void arkAPI.getConfigPath().then((p) => { (document.getElementById('cfgPath') as HTMLElement).textContent = '配置文件：' + p; });
+}
+
+function renderPluginErrors(): void {
+  const el = $('pluginErrors');
+  const errs = state?.providerErrors ?? [];
+  el.classList.toggle('hidden', errs.length === 0);
+  el.textContent = errs.length ? '插件加载失败：' + errs.map((e) => e.file + '（' + e.error + '）').join('；') : '';
 }
 
 function renderAccountList() {
@@ -165,10 +225,10 @@ function renderAccountList() {
     row.className = 'acc-row';
     const name = document.createElement('span');
     name.className = 'name';
-    name.textContent = a.alias;
+    name.textContent = a.alias + ' · ' + providerName(a.provider);
     const ak = document.createElement('span');
     ak.className = 'ak';
-    ak.textContent = maskAk(a.accessKeyId);
+    ak.textContent = maskAk(Object.values(a.credentials)[0] ?? '');
     const edit = document.createElement('button');
     edit.className = 'mini-btn';
     edit.title = '编辑';
@@ -176,9 +236,8 @@ function renderAccountList() {
     edit.onclick = () => {
       editingIndex = i;
       (document.getElementById('fAlias') as HTMLInputElement).value = a.alias;
-      (document.getElementById('fAk') as HTMLInputElement).value = a.accessKeyId;
-      (document.getElementById('fSk') as HTMLInputElement).value = a.secretAccessKey;
-      (document.getElementById('fRegion') as HTMLInputElement).value = a.region || '';
+      renderProviderSelect(a.provider);
+      renderFormFields(a.provider, a.credentials);
       (document.getElementById('addBtn') as HTMLButtonElement).textContent = '保存修改';
       (document.getElementById('cancelEditBtn') as HTMLElement).classList.remove('hidden');
     };
@@ -214,30 +273,33 @@ function bind() {
     $('settingsModal').classList.add('hidden');
     if (state) await saveState({ refreshIntervalSec: intervalValue(), accounts: state.config.accounts });
   };
+  $('fProvider').addEventListener('change', () => {
+    renderFormFields(($('fProvider') as HTMLSelectElement).value);
+  });
   $('addBtn').onclick = async () => {
     const alias = (document.getElementById('fAlias') as HTMLInputElement).value.trim();
-    const ak = (document.getElementById('fAk') as HTMLInputElement).value.trim();
-    const sk = (document.getElementById('fSk') as HTMLInputElement).value;
-    if (!alias || !ak || !sk) { alert('别名、AccessKey ID、SecretAccessKey 均不能为空'); return; }
-    const region = (document.getElementById('fRegion') as HTMLInputElement).value.trim() || undefined;
+    const provider = ($('fProvider') as HTMLSelectElement).value;
+    if (!alias) { alert('别名不能为空'); return; }
+    let creds: Record<string, string>;
+    try { creds = collectCreds(); } catch (e) { alert(String((e as Error).message)); return; }
     const accounts = [...(state?.config.accounts ?? [])];
-    const account: AccountConfig = { alias, accessKeyId: ak, secretAccessKey: sk, region };
+    const account: AccountConfig = { provider, alias, credentials: creds };
     if (editingIndex >= 0 && editingIndex < accounts.length) accounts[editingIndex] = account;
     else accounts.push(account);
     editingIndex = -1;
     (document.getElementById('addBtn') as HTMLButtonElement).textContent = '添加';
     (document.getElementById('cancelEditBtn') as HTMLElement).classList.add('hidden');
     (document.getElementById('fAlias') as HTMLInputElement).value = '';
-    (document.getElementById('fAk') as HTMLInputElement).value = '';
-    (document.getElementById('fSk') as HTMLInputElement).value = '';
-    (document.getElementById('fRegion') as HTMLInputElement).value = '';
+    renderFormFields(provider);
     await saveState({ refreshIntervalSec: intervalValue(), accounts });
   };
   $('cancelEditBtn').onclick = () => {
     editingIndex = -1;
     (document.getElementById('addBtn') as HTMLButtonElement).textContent = '添加';
     (document.getElementById('cancelEditBtn') as HTMLElement).classList.add('hidden');
+    renderFormFields(($('fProvider') as HTMLSelectElement).value);
   };
+  $('openPluginsBtn').onclick = () => { void arkAPI.openPluginsFolder(); };
   $('showFolderBtn').onclick = () => { void arkAPI.showConfigFolder(); };
   $('deleteAllBtn').onclick = async () => {
     if (!confirm('删除全部配置（所有账号）？')) return;
