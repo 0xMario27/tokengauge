@@ -9,7 +9,8 @@
     "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json",
     "selftest": "npm run build && node dist/selftest.js",
     "start": "npm run build && electron .",
-    "dist": "npm run build && electron-builder --mac"
+    "dist": "npm run build && electron-builder --mac",
+    "dist:x64": "npm run build && electron-builder --mac --x64"
   },
   "build": {
     "appId": "com.ghostliu.tokengauge",
@@ -29,13 +30,13 @@
         {
           "target": "dmg",
           "arch": [
-            "universal"
+            "arm64"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "universal"
+            "arm64"
           ]
         }
       ]
