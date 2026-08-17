@@ -1,5 +1,5 @@
 // 移植自 cc-switch coding_plan.rs 的确定性自检：签名结构 + 解析向量。
-import { canonicalQuery, volcengineSign, parseAfpTiers, parseCodingPlanTiers, TIER_FIVE_HOUR, TIER_WEEKLY, TIER_MONTHLY } from './core/volcengine';
+import { canonicalQuery, volcengineSign, parseAfpTiers, parseCodingPlanTiers, TIER_FIVE_HOUR, TIER_WEEKLY, TIER_MONTHLY, volcengineProvider } from './core/providers/volcengine';
 
 let failures = 0;
 function check(name: string, cond: boolean, detail?: string) {
@@ -59,19 +59,33 @@ console.log('配置持久化（写入/读取往返）：');
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { normalizeConfig, saveConfig, loadConfig } from './core/config';
+import { normalizeConfig, normalizeAccount, saveConfig, loadConfig } from './core/config';
 {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-widget-test-'));
   const file = path.join(dir, 'config.json');
   saveConfig(file, {
     refreshIntervalSec: 45,
-    accounts: [{ alias: '主力', accessKeyId: 'AK1', secretAccessKey: 'SK1', region: 'cn-beijing' }],
+    accounts: [{ provider: 'volcengine', alias: '主力', credentials: { accessKeyId: 'AK1', secretAccessKey: 'SK1', region: 'cn-beijing' } }],
   });
   const loaded = loadConfig(file);
-  check('账号完整写入并读回', loaded.accounts.length === 1 && loaded.accounts[0].alias === '主力' && loaded.accounts[0].secretAccessKey === 'SK1' && loaded.refreshIntervalSec === 45, JSON.stringify(loaded));
+  check('账号完整写入并读回', loaded.accounts.length === 1 && loaded.accounts[0].alias === '主力' && loaded.accounts[0].credentials.secretAccessKey === 'SK1' && loaded.refreshIntervalSec === 45, JSON.stringify(loaded));
   fs.rmSync(dir, { recursive: true, force: true });
 }
 check('normalize 拒绝缺字段账号', normalizeConfig({ accounts: [{ alias: 'x', accessKeyId: 'k' }] }).accounts.length === 0);
+
+console.log('Provider 注册形态：');
+check('内置 volcengine provider 形状', volcengineProvider.id === 'volcengine' && volcengineProvider.fields.length === 3 && typeof volcengineProvider.query === 'function');
+
+console.log('配置 v1 -> v2 迁移：');
+{
+  const acc = normalizeAccount({ alias: ' 旧账号 ', accessKeyId: ' AK1 ', secretAccessKey: ' SK1 ', region: ' ' });
+  check('v1 迁移为 volcengine + credentials', acc !== null && acc.provider === 'volcengine' && acc.alias === '旧账号' && acc.credentials.accessKeyId === 'AK1' && acc.credentials.secretAccessKey === 'SK1' && acc.credentials.region === undefined, JSON.stringify(acc));
+  const acc2 = normalizeAccount({ provider: 'deepseek', alias: 'x', credentials: { apiKey: ' k ' } });
+  check('v2 直取并 trim', acc2 !== null && acc2.credentials.apiKey === 'k');
+  check('缺凭据/缺别名拒绝', normalizeAccount({ alias: 'a', provider: 'p', credentials: {} }) === null && normalizeAccount({ accessKeyId: 'k' }) === null);
+  const cfg = normalizeConfig({ accounts: [{ alias: 'v1', accessKeyId: 'AK', secretAccessKey: 'SK' }] });
+  check('normalizeConfig 整体迁移', cfg.accounts.length === 1 && cfg.accounts[0].provider === 'volcengine');
+}
 
 if (failures > 0) { console.error(`FAIL: ${failures} 项未通过`); process.exit(1); }
 console.log('PASS：全部自检通过');

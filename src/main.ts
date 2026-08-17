@@ -2,7 +2,8 @@ import { app, BrowserWindow, Tray, Menu, ipcMain, shell, nativeImage, screen } f
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { loadConfig, saveConfig, normalizeConfig, DEFAULT_CONFIG, WidgetConfig } from './core/config';
-import { queryVolcengineUsage, UsageResult } from './core/volcengine';
+import { UsageResult } from './core/provider';
+import { loadRegistry, providerInfos, Registry } from './core/registry';
 
 // gauge 模板图标：由 scripts/gen-tray-icon.js 生成 scripts/tray-icon.png，运行时直接读文件（避免 base64 转录出错）
 
@@ -15,12 +16,18 @@ let config: WidgetConfig = loadConfig(path.join(app.getPath('userData'), 'config
 let usage: (UsageResult & { alias: string })[] = [];
 let updating = false;
 let pollTimer: NodeJS.Timeout | null = null;
+let registry: Registry = { defs: [], errors: [] };
 
 function configPath(): string { return path.join(app.getPath('userData'), 'config.json'); }
+function pluginsDir(): string { return path.join(app.getPath('userData'), 'providers'); }
 function windowStatePath(): string { return path.join(app.getPath('userData'), 'window-state.json'); }
 
+function statePayload() {
+  return { config, usage, updating, providers: providerInfos(registry), providerErrors: registry.errors };
+}
+
 function broadcast() {
-  if (win && !win.isDestroyed()) win.webContents.send('usage-update', { config, usage, updating });
+  if (win && !win.isDestroyed()) win.webContents.send('usage-update', statePayload());
 }
 
 async function refreshAll() {
@@ -28,9 +35,14 @@ async function refreshAll() {
   updating = true;
   broadcast();
   const results = await Promise.allSettled(
-    config.accounts.map((a) =>
-      queryVolcengineUsage(a.accessKeyId, a.secretAccessKey, a.region).then((r) => ({ alias: a.alias, ...r })),
-    ),
+    config.accounts.map(async (a) => {
+      const def = registry.defs.find((d) => d.id === a.provider);
+      if (!def) {
+        return { alias: a.alias, ok: false, tiers: [], error: `Unknown provider "${a.provider}"`, queriedAt: Date.now() } as UsageResult & { alias: string };
+      }
+      const r = await def.query(a.credentials);
+      return { alias: a.alias, ...r };
+    }),
   );
   usage = results.map((r, i) =>
     r.status === 'fulfilled'
@@ -117,15 +129,15 @@ function createTray() {
 }
 
 function registerIpc() {
-  ipcMain.handle('get-state', () => ({ config, usage, updating }));
+  ipcMain.handle('get-state', () => statePayload());
   ipcMain.handle('get-config-path', () => configPath());
-  ipcMain.handle('refresh', async () => { await refreshAll(); return { config, usage, updating }; });
+  ipcMain.handle('refresh', async () => { await refreshAll(); return statePayload(); });
   ipcMain.handle('save-config', (_e, cfg: unknown) => {
     config = normalizeConfig(cfg);
     saveConfig(configPath(), config);
     schedulePoll();
     void refreshAll();
-    return { config, usage, updating };
+    return statePayload();
   });
   ipcMain.handle('delete-config', () => {
     config = { ...DEFAULT_CONFIG };
@@ -133,9 +145,10 @@ function registerIpc() {
     usage = [];
     schedulePoll();
     broadcast();
-    return { config, usage, updating };
+    return statePayload();
   });
   ipcMain.handle('show-config-folder', () => { shell.showItemInFolder(configPath()); });
+  ipcMain.handle('open-plugins-folder', () => { void shell.openPath(pluginsDir()); });
   ipcMain.handle('quit', () => app.quit());
 }
 
@@ -149,6 +162,7 @@ if (!gotLock) {
   app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
   app.whenReady().then(() => {
     if (process.platform === 'darwin') app.setActivationPolicy('accessory'); // 无 Dock 图标，纯托盘常驻
+    registry = loadRegistry(pluginsDir(), path.join(__dirname, '../providers/example.js'));
     registerIpc();
     createWindow();
     createTray();

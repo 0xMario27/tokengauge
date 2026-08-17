@@ -20,6 +20,23 @@ npm start          # 启动便签（无 Dock 图标，托盘常驻；托盘可�
 - 便签可拖动（记位置）、跨所有桌面/全屏空间可见；✕ 隐藏到托盘
 - 「在 Finder 中显示配置」可直达配置文件；「删除全部配置」清空所有账号
 
+## Provider 插件（贡献查询逻辑）
+
+用量查询已抽象为 Provider 契约，内置「火山方舟」。任何服务商都能以 JS 插件形式接入：
+
+```bash
+# 插件目录（设置页「插件目录」按钮直达）
+~/Library/Application Support/ark-usage-widget/providers/
+```
+
+**契约**：`module.exports = { id, name, fields[], query(credentials) }`
+- `id` 全局唯一；`fields` 声明凭据字段（设置页动态渲染表单）
+- `query` 返回 `{ ok, plan?, tiers: [{ name, utilization(0-100), resetsAt? }], queriedAt }`
+- 并发调用；抛异常或 `ok:false` 只影响该账号面板
+- 完整模版见仓库 `providers/example.js`（DeepSeek 余额，首次运行自动复制到插件目录）
+
+改动插件后重启应用生效。插件在主进程运行，请只安装自己信任的代码（同 VS Code 扩展模型）。
+
 ## 打包分发（macOS）
 
 ```bash
