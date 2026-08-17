@@ -85,6 +85,13 @@ function renderProviderSelect(selected: string): void {
     opt.textContent = p.name;
     sel.appendChild(opt);
   }
+  // 插件已卸载的账号：保留原值可选（禁用），避免编辑时被静默改写成其他供应商
+  if (selected && !sel.querySelector(`option[value="${CSS.escape(selected)}"]`)) {
+    const ghost = document.createElement('option');
+    ghost.value = selected;
+    ghost.textContent = providerName(selected) + '（插件未加载）';
+    sel.appendChild(ghost);
+  }
   sel.value = selected;
 }
 
@@ -283,6 +290,11 @@ function bind() {
     let creds: Record<string, string>;
     try { creds = collectCreds(); } catch (e) { alert(String((e as Error).message)); return; }
     const accounts = [...(state?.config.accounts ?? [])];
+    // 编辑插件未加载的账号且表单为空时，保留原凭据（防止 normalize 丢弃账号）
+    const orig = editingIndex >= 0 ? accounts[editingIndex] : undefined;
+    if (editingIndex >= 0 && orig && orig.provider === provider && Object.keys(creds).length === 0 && Object.keys(orig.credentials).length > 0) {
+      creds = orig.credentials;
+    }
     const account: AccountConfig = { provider, alias, credentials: creds };
     if (editingIndex >= 0 && editingIndex < accounts.length) accounts[editingIndex] = account;
     else accounts.push(account);
