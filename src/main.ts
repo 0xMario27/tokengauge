@@ -110,6 +110,25 @@ function createWindow() {
   win.on('closed', () => { win = null; });
 }
 
+// Tray menu labels per UI locale (undefined locale = follow the system language)
+const TRAY_LABELS: Record<'zh' | 'en', Record<string, string>> = {
+  zh: { settings: '设置…', refresh: '立即刷新', hide: '隐藏', quit: '退出' },
+  en: { settings: 'Settings…', refresh: 'Refresh Now', hide: 'Hide', quit: 'Quit' },
+};
+let trayMenu: Menu | null = null;
+
+function buildTrayMenu(): void {
+  const locale = config.locale ?? (app.getLocale().startsWith('zh') ? 'zh' : 'en');
+  const L = TRAY_LABELS[locale];
+  trayMenu = Menu.buildFromTemplate([
+    { label: L.settings, click: () => { if (win) { win.show(); win.webContents.send('open-settings'); } } },
+    { label: L.refresh, click: () => void refreshAll() },
+    { type: 'separator' },
+    { label: L.hide, click: () => { win?.hide(); } },
+    { label: L.quit, click: () => app.quit() },
+  ]);
+}
+
 function createTray() {
   const icon = nativeImage.createFromPath(path.join(__dirname, '../scripts/tray-icon.png'));
   icon.setTemplateImage(true); // auto-inverts with the macOS menu bar appearance
@@ -118,14 +137,8 @@ function createTray() {
   tray.setToolTip('TokenGauge');
   // Left click: always show the window; right click: open the menu (avoid setContextMenu so left click does not open it too)
   tray.on('click', () => { if (win) { win.show(); win.focus(); } });
-  const menu = Menu.buildFromTemplate([
-    { label: 'Settings…', click: () => { if (win) { win.show(); win.webContents.send('open-settings'); } } },
-    { label: 'Refresh Now', click: () => void refreshAll() },
-    { type: 'separator' },
-    { label: 'Hide', click: () => { win?.hide(); } },
-    { label: 'Quit', click: () => app.quit() },
-  ]);
-  tray.on('right-click', () => tray?.popUpContextMenu(menu));
+  buildTrayMenu();
+  tray.on('right-click', () => trayMenu && tray?.popUpContextMenu(trayMenu));
 }
 
 function registerIpc() {
@@ -135,6 +148,7 @@ function registerIpc() {
   ipcMain.handle('save-config', (_e, cfg: unknown) => {
     config = normalizeConfig(cfg);
     saveConfig(configPath(), config);
+    buildTrayMenu(); // menu labels follow the saved locale
     schedulePoll();
     void refreshAll();
     return statePayload();

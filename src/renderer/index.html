@@ -54,7 +54,7 @@
     -webkit-backdrop-filter: blur(40px) saturate(1.8);
     backdrop-filter: blur(40px) saturate(1.8);
     border: 1px solid var(--border-glass); border-radius: 16px;
-    box-shadow: 0 24px 56px var(--shadow), inset 0 1px 0 var(--highlight);
+    box-shadow: inset 0 1px 0 var(--highlight);
     display: flex; flex-direction: column; color: var(--text);
   }
   /* Mirror highlight (glass layer, does not cover content) */
@@ -165,7 +165,8 @@
   .mini-btn svg { width: 11px; height: 11px; }
   .form { display: flex; flex-direction: column; gap: 2px; }
   .form-row { display: flex; gap: 6px; margin-top: 7px; }
-  .modal-actions { display: flex; gap: 4px; margin-top: 16px; align-items: center; }
+  .modal-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 16px; align-items: center; }
+  .modal-actions .btn { padding: 6px 10px; font-size: 10px; }
   .btn {
     font-size: 10.5px; font-weight: 650; letter-spacing: .2px;
     padding: 6px 13px; border-radius: 999px; cursor: pointer; line-height: 1;
@@ -192,12 +193,12 @@
 </head>
 <body>
   <div class="note">
-    <div class="drag-zone" title="Drag to move"><span class="grip"><i></i><i></i><i></i></span></div>
+    <div class="drag-zone" data-i18n-title="dragTitle" title="Drag to move"><span class="grip"><i></i><i></i><i></i></span></div>
     <div id="accounts" class="accounts"></div>
-    <div id="empty" class="empty hidden">No accounts yet<br />Click the tray icon · Settings</div>
+    <div id="empty" class="empty hidden"><span data-i18n="emptyL1">No accounts yet</span><br /><span data-i18n="emptyL2">Click the tray icon · Settings</span></div>
     <div id="dsTimeline" class="ds">
       <div class="ds-head">
-        <span class="ds-name">DeepSeek hours</span>
+        <span class="ds-name" data-i18n="dsName">DeepSeek hours</span>
         <span id="dsStatus" class="ds-status">--</span>
       </div>
       <div class="ds-track">
@@ -212,27 +213,33 @@
 
   <div id="settingsModal" class="modal hidden">
     <div class="modal-card">
-      <h2>Settings</h2>
-      <h3>Refresh</h3>
-      <label>Auto interval (s)<input id="intervalInput" type="number" min="5" step="5" /></label>
-      <h3>Accounts</h3>
+      <h2 data-i18n="settings">Settings</h2>
+      <h3 data-i18n="refresh">Refresh</h3>
+      <label><span data-i18n="interval">Auto interval (s)</span><input id="intervalInput" type="number" min="5" step="5" /></label>
+      <h3 data-i18n="language">Language</h3>
+      <select id="localeSelect">
+        <option value="auto" data-i18n="auto">Auto (system)</option>
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+      </select>
+      <h3 data-i18n="accounts">Accounts</h3>
       <div id="accountList"></div>
-      <h3>Add / Edit</h3>
+      <h3 data-i18n="addEdit">Add / Edit</h3>
       <div class="form">
-        <input id="fAlias" placeholder="Alias (e.g. primary)" />
+        <input id="fAlias" data-i18n-ph="aliasPh" placeholder="Alias (e.g. primary)" />
         <select id="fProvider"></select>
         <div id="fFields"></div>
         <div class="form-row">
-          <button id="addBtn" class="btn btn-primary">Add</button>
-          <button id="cancelEditBtn" class="btn hidden">Cancel</button>
+          <button id="addBtn" class="btn btn-primary" data-i18n="add">Add</button>
+          <button id="cancelEditBtn" class="btn hidden" data-i18n="cancelEdit">Cancel</button>
         </div>
       </div>
       <div id="pluginErrors" class="plugin-errors hidden"></div>
       <div class="modal-actions">
-        <button id="showFolderBtn" class="btn">Config file</button>
-        <button id="openPluginsBtn" class="btn">Plugins folder</button>
-        <button id="deleteAllBtn" class="btn btn-danger">Delete all</button>
-        <button id="modalCloseBtn" class="btn btn-primary push-right">Done</button>
+        <button id="showFolderBtn" class="btn" data-i18n="configBtn">Config file</button>
+        <button id="openPluginsBtn" class="btn" data-i18n="pluginsBtn">Plugins folder</button>
+        <button id="deleteAllBtn" class="btn btn-danger" data-i18n="deleteAllBtn">Delete all</button>
+        <button id="modalCloseBtn" class="btn btn-primary push-right" data-i18n="done">Done</button>
       </div>
       <div id="cfgPath" class="cfg-path"></div>
     </div>

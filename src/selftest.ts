@@ -85,6 +85,11 @@ console.log('Config v1 -> v2 migration:');
   check('missing credentials / alias rejected', normalizeAccount({ alias: 'a', provider: 'p', credentials: {} }) === null && normalizeAccount({ accessKeyId: 'k' }) === null);
   const cfg = normalizeConfig({ accounts: [{ alias: 'v1', accessKeyId: 'AK', secretAccessKey: 'SK' }] });
   check('normalizeConfig migrates wholesale', cfg.accounts.length === 1 && cfg.accounts[0].provider === 'volcengine');
+  {
+    const l1 = normalizeConfig({ locale: 'zh' });
+    const l2 = normalizeConfig({ locale: 'jp' });
+    check('locale: zh/en kept, others dropped', l1.locale === 'zh' && l2.locale === undefined);
+  }
 }
 
 if (failures > 0) { console.error(`FAIL: ${failures} check(s) failed`); process.exit(1); }
