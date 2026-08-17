@@ -1,4 +1,4 @@
-// ── Provider 注册表：内置实现 + 用户插件（userData/providers/*.js）──
+// ── Provider registry: built-ins + user plugins (userData/providers/*.js) ──
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { ProviderDef, ProviderInfo } from './provider';
@@ -9,7 +9,7 @@ export interface Registry {
   errors: { file: string; error: string }[];
 }
 
-/** 校验插件形状（module.exports 或 export default 均可） */
+/** Validate plugin shape (module.exports or export default both work) */
 function validatePlugin(mod: any): ProviderDef {
   const def = mod?.default ?? mod;
   if (
@@ -25,14 +25,14 @@ function validatePlugin(mod: any): ProviderDef {
 }
 
 /**
- * 加载注册表。插件目录不存在则创建（首次运行），并从 example 源复制示例插件。
- * 加载失败/重复 id 的插件记入 errors，不影响其余插件与内置实现。
+ * Load the registry. Creates the plugins dir on first run and copies the example plugin from source.
+ * Failed loads / duplicate ids are recorded in errors without affecting other plugins or built-ins.
  */
 export function loadRegistry(pluginsDir: string, exampleSrc?: string): Registry {
   if (!fs.existsSync(pluginsDir)) {
     fs.mkdirSync(pluginsDir, { recursive: true });
     if (exampleSrc && fs.existsSync(exampleSrc)) {
-      try { fs.copyFileSync(exampleSrc, path.join(pluginsDir, path.basename(exampleSrc))); } catch { /* 忽略 */ }
+      try { fs.copyFileSync(exampleSrc, path.join(pluginsDir, path.basename(exampleSrc))); } catch { /* ignore */ }
     }
   }
   const defs: ProviderDef[] = [volcengineProvider];
@@ -40,7 +40,7 @@ export function loadRegistry(pluginsDir: string, exampleSrc?: string): Registry 
   const files = fs.readdirSync(pluginsDir).filter((f) => f.endsWith('.js')).sort();
   for (const f of files) {
     try {
-      // 插件运行在主进程，等同用户自己写的代码（同 VS Code 扩展信任模型）
+      // Plugins run in the main process, equivalent to code the user wrote (VS Code extension trust model)
       const def = validatePlugin(require(path.join(pluginsDir, f)));
       if (defs.some((d) => d.id === def.id)) throw new Error(`duplicate provider id "${def.id}"`);
       defs.push(def);

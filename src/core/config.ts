@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-/** v2 账户：供应商 + 凭据字典（v1 为顶层 accessKeyId/secretAccessKey，读取时自动迁移） */
+/** v2 account: provider + credentials map (v1 had top-level accessKeyId/secretAccessKey, auto-migrated on load) */
 export interface AccountConfig {
   provider: string;
   alias: string;
@@ -15,7 +15,7 @@ export interface WidgetConfig {
 
 export const DEFAULT_CONFIG: WidgetConfig = { refreshIntervalSec: 30, accounts: [] };
 
-// macOS 常规应用数据目录（应用名子目录下）；Electron 的 app.getPath('userData') 同此。
+// Standard macOS app-support directory (per-app subdirectory); same as Electron's app.getPath('userData').
 export function defaultConfigPath(): string {
   const home = process.env.HOME || '';
   return path.join(home, 'Library', 'Application Support', 'TokenGauge', 'config.json');
@@ -31,7 +31,7 @@ function normalizeCredentials(raw: any): Record<string, string> {
   return creds;
 }
 
-/** 单账号归一化：v2 直取；v1（顶层 AK/SK）迁移为 volcengine；无效跳过返回 null */
+/** Normalize one account: v2 as-is; v1 (top-level AK/SK) migrated to volcengine; invalid entries skipped (null) */
 export function normalizeAccount(raw: any): AccountConfig | null {
   if (!raw || typeof raw.alias !== 'string' || raw.alias.trim() === '') return null;
   const alias = raw.alias.trim();
@@ -41,7 +41,7 @@ export function normalizeAccount(raw: any): AccountConfig | null {
     if (Object.keys(credentials).length === 0) return null;
     return { provider: raw.provider.trim(), alias, credentials };
   }
-  // v1 -> volcengine 迁移
+  // v1 -> volcengine migration
   if (typeof raw.accessKeyId === 'string' && typeof raw.secretAccessKey === 'string' &&
       raw.accessKeyId.trim() !== '' && raw.secretAccessKey.trim() !== '') {
     return {
@@ -79,8 +79,8 @@ export function loadConfig(filePath: string): WidgetConfig {
 export function saveConfig(filePath: string, cfg: WidgetConfig): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const tmp = filePath + '.tmp';
-  // 含密钥，权限 600（仅属主可读写）
+  // Contains secrets: 0600 (owner read/write only)
   fs.writeFileSync(tmp, JSON.stringify(cfg, null, 2) + '\n', { mode: 0o600 });
-  fs.chmodSync(tmp, 0o600); // rename 不继承权限语义跨平台一致，显式设一次
+  fs.chmodSync(tmp, 0o600); // rename permission semantics vary across platforms, set explicitly
   fs.renameSync(tmp, filePath);
 }

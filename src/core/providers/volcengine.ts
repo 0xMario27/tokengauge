@@ -3,8 +3,8 @@ import { ProviderDef, Tier, UsageResult } from '../provider';
 
 export type { Tier, UsageResult };
 
-// 从 cc-switch src-tauri/src/services/coding_plan.rs 移植的火山引擎控制面 OpenAPI 逻辑
-// （签名 V4 + GetAFPUsage/GetCodingPlanUsage 探测 + 档位解析），保持逐字一致。
+// Volcengine control-plane OpenAPI logic ported from cc-switch src-tauri/src/services/coding_plan.rs
+// (Signature V4 + GetAFPUsage/GetCodingPlanUsage probing + tier parsing), kept verbatim.
 
 export const VOLCENGINE_HOST = 'open.volcengineapi.com';
 export const API_VERSION = '2024-01-01';
@@ -15,17 +15,17 @@ const SIGNED_HEADERS = 'host;x-date;x-content-sha256;content-type';
 const AKSK_HINT =
   'Check the AccessKey ID / Secret are correct and the account has Ark usage-query (OpenAPI) permission.';
 
-// 与 cc-switch 显示名一致（zh locale：fiveHour/sevenDay/monthly）
-export const TIER_FIVE_HOUR = '5小时';
-export const TIER_WEEKLY = '7天';
-export const TIER_MONTHLY = '每月';
+// Tier display names (cc-switch parity: fiveHour/sevenDay/monthly)
+export const TIER_FIVE_HOUR = '5h';
+export const TIER_WEEKLY = '7d';
+export const TIER_MONTHLY = 'Monthly';
 
 
 
 function sha256Hex(data: Buffer | string): string { return createHash('sha256').update(data).digest('hex'); }
 function hmacSha256(key: Buffer | string, data: Buffer | string): Buffer { return createHmac('sha256', key).update(data).digest(); }
 
-// RFC3986 unreserved 之外全部 %XX（与 Rust volc_uri_encode 一致）
+// Percent-encode everything outside RFC3986 unreserved (matches Rust volc_uri_encode)
 function volcUriEncode(input: string): string {
   return encodeURIComponent(input).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 }
@@ -53,7 +53,7 @@ export function volcengineSign(
   const xDate = fmtUtc(now, 'stamp');
   const shortDate = fmtUtc(now, 'short');
   const xContentSha256 = sha256Hex(body);
-  // 固定顺序 canonical headers（火山特有，不排序）
+  // Fixed-order canonical headers (Volcengine-specific, not sorted)
   const canonicalHeaders =
     `host:${VOLCENGINE_HOST}\nx-date:${xDate}\nx-content-sha256:${xContentSha256}\ncontent-type:${CONTENT_TYPE}\n`;
   const canonicalRequest =
@@ -150,7 +150,7 @@ function toNum(v: unknown): number | null {
 function extractResetTime(v: unknown): string | null {
   const n = toNum(v);
   if (n === null || n < 0) return null;
-  const ms = n < 1e11 ? n * 1000 : n; // 秒级 / 毫秒级兼容
+  const ms = n < 1e11 ? n * 1000 : n; // accept seconds or milliseconds
   return new Date(ms).toISOString();
 }
 
@@ -162,7 +162,7 @@ export function parseAfpTiers(result: any): Tier[] {
     const win = result?.[key];
     if (!win) continue;
     const quota = toNum(win.Quota) ?? 0;
-    if (quota <= 0) continue; // 未订阅/未启用窗口跳过（也用于识别"无 Agent Plan"）
+    if (quota <= 0) continue; // skip unsubscribed/inactive windows (also detects "no Agent Plan")
     const used = toNum(win.Used) ?? 0;
     tiers.push({ name, utilization: (used / quota) * 100, resetsAt: extractResetTime(win.ResetTime) });
   }
@@ -192,10 +192,10 @@ export function parseCodingPlanTiers(result: any): Tier[] {
   return tiers;
 }
 
-/** Provider 注册形态：凭据字典 -> 用量结果 */
+/** Provider registration shape: credentials map -> usage result */
 export const volcengineProvider: ProviderDef = {
   id: 'volcengine',
-  name: '火山方舟',
+  name: 'Volcengine Ark',
   fields: [
     { key: 'accessKeyId', label: 'AccessKey ID', type: 'text' },
     { key: 'secretAccessKey', label: 'SecretAccessKey', type: 'password' },
@@ -213,7 +213,7 @@ export async function queryVolcengineUsage(
   const soft: string[] = [];
   const queriedAt = Date.now();
 
-  // 1) Agent Plan 探测
+  // 1) Probe Agent Plan
   const afp = await volcengineOpenApiCall(reg, accessKeyId, secretAccessKey, 'GetAFPUsage');
   if (afp.kind === 'auth') return { ok: false, tiers: [], error: afp.detail, queriedAt };
   if (afp.kind === 'transient') return { ok: false, tiers: [], error: `GetAFPUsage: ${afp.detail}`, queriedAt };
@@ -228,7 +228,7 @@ export async function queryVolcengineUsage(
     }
   }
 
-  // 2) Coding Plan 回退
+  // 2) Fall back to Coding Plan
   const cp = await volcengineOpenApiCall(reg, accessKeyId, secretAccessKey, 'GetCodingPlanUsage');
   if (cp.kind === 'auth') return { ok: false, tiers: [], error: cp.detail, queriedAt };
   if (cp.kind === 'transient') return { ok: false, tiers: [], error: `GetCodingPlanUsage: ${cp.detail}`, queriedAt };

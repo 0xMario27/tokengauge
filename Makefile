@@ -1,35 +1,35 @@
 # TokenGauge
-# make / make help    查看所有命令
+# make / make help    list all commands
 
 .PHONY: help build selftest smoke start dist-arm64 dist-x64 dist-universal dist-all clean
 
-help: ## 显示帮助
+help: ## show help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-build: ## 编译 TypeScript
+build: ## compile TypeScript
 	npm run build
 
-selftest: build ## 运行确定性自检（签名/解析/迁移向量）
+selftest: build ## run deterministic self-tests (signature/parsing/migration vectors)
 	node dist/selftest.js
 
-smoke: build ## 启动冒烟（窗口加载即自动退出）
+smoke: build ## boot smoke test (exits right after window load)
 	npx electron . --smoke
 
-start: build ## 开发模式启动
+start: build ## run in dev mode
 	npx electron .
 
-dist-arm64: build ## 打包 Apple Silicon dmg（默认分发，93MB）
+dist-arm64: build ## build Apple Silicon dmg (default distribution, 93MB)
 	npx electron-builder --mac --arm64
 
-dist-x64: build ## 打包 Intel dmg
+dist-x64: build ## build Intel dmg
 	npx electron-builder --mac --x64
 
-dist-universal: build ## 打包双架构通用 dmg（体积翻倍，176MB）
+dist-universal: build ## build universal dmg (both arches, twice the size, 176MB)
 	npx electron-builder --mac --universal
 
-dist-all: build ## 打包 arm64 + x64 各一份
+dist-all: build ## build both arm64 and x64 dmgs
 	npx electron-builder --mac --arm64
 	npx electron-builder --mac --x64
 
-clean: ## 清理构建产物（dist/ + release/）
+clean: ## clean build outputs (dist/ + release/)
 	rm -rf dist release
