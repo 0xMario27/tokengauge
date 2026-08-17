@@ -2,7 +2,10 @@
   "name": "tokengauge",
   "version": "0.1.0",
   "private": true,
-  "description": "多供应商 AI 用量悬浮看板（插件化）",
+  "description": "Floating usage dashboard for AI services (plugin-based providers)",
+  "license": "MIT",
+  "author": "0xMario <liutingwei3996@gmail.com>",
+  "repository": "github:0xMario27/tokengauge",
   "author": "ghostliu",
   "main": "dist/main.js",
   "scripts": {

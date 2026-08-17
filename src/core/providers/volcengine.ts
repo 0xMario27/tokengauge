@@ -3,7 +3,8 @@ import { ProviderDef, Tier, UsageResult } from '../provider';
 
 export type { Tier, UsageResult };
 
-// Volcengine control-plane OpenAPI logic ported from cc-switch src-tauri/src/services/coding_plan.rs
+// Volcengine control-plane OpenAPI logic ported from cc-switch (github.com/cc-switch/CCSwitch)
+// src-tauri/src/services/coding_plan.rs
 // (Signature V4 + GetAFPUsage/GetCodingPlanUsage probing + tier parsing), kept verbatim.
 
 export const VOLCENGINE_HOST = 'open.volcengineapi.com';

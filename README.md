@@ -1,14 +1,16 @@
 # TokenGauge
 
-**English** | [简体中文](README.zh-CN.md)
+**English** | [简体中文](README.zh-CN.md) · [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A floating usage dashboard for macOS: multi-account, multi-provider views of AI service usage / quotas / balances.
 **Plugin-based provider architecture** - ships with Volcengine Ark built in
 (Agent Plan / Coding Plan 5h / 7d / monthly tier progress + reset countdowns; <70% green / 70-89% orange / >=90% red)
 plus a DeepSeek balance example plugin out of the box. Any vendor can be added as a plugin.
 
-The Volcengine Ark query logic is ported from [cc-switch](https://github.com/cc-switch/CCSwitch)'s `coding_plan.rs`:
-the Volcengine **control-plane OpenAPI** (`open.volcengineapi.com`) with **Signature V4** (AK/SK), probing `GetAFPUsage`
+The Volcengine Ark query logic is ported from [cc-switch](https://github.com/cc-switch/CCSwitch)'s `coding_plan.rs`
+(control-plane OpenAPI + Signature V4), with attribution kept in the source header.
+
+Original logic: the Volcengine **control-plane OpenAPI** (`open.volcengineapi.com`) with **Signature V4** (AK/SK), probing `GetAFPUsage`
 (Agent Plan) first and falling back to `GetCodingPlanUsage` when unsubscribed. Accounts are queried concurrently
 (`Promise.allSettled`).
 
