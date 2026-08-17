@@ -1,0 +1,52 @@
+{
+  "name": "ark-usage-widget",
+  "version": "0.1.0",
+  "private": true,
+  "description": "便签式火山方舟 Agent/Coding Plan 用量小工具",
+  "author": "ghostliu",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json",
+    "selftest": "npm run build && node dist/selftest.js",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.ghostliu.ark-usage-widget",
+    "productName": "ark-usage-widget",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "src/renderer/index.html",
+      "scripts/tray-icon.png"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "electron": "^33.4.11",
+    "electron-builder": "^26.15.3",
+    "typescript": "^5.9.3"
+  },
+  "allowScripts": {
+    "electron@33.4.11": true
+  }
+}

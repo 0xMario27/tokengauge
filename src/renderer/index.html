@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'" />
+<style>
+  /* macOS 26 Liquid Glass：大圆角同心 + 胶囊控件 + 镜面高光；玻璃只用于容器，内容层保持清晰 */
+  :root {
+    /* 干净的中性玻璃：黑色半透明（macOS dark material，#1C1C1E 系 + 白色 label 层） */
+    --bg-glass: rgba(28,28,30,.85); --bg-solid: #1C1C1E;
+    --border-glass: rgba(255,255,255,.13); --highlight: rgba(255,255,255,.08);
+    --text: rgba(235,235,245,.72); --strong: rgba(255,255,255,.95);
+    --dim: rgba(235,235,245,.62); --faint: rgba(235,235,245,.52);
+    --divider: rgba(255,255,255,.08);
+    --track: rgba(120,120,128,.24); --hover: rgba(255,255,255,.08);
+    --input-bg: rgba(120,120,128,.12);
+    --accent: #E3B341; --mark1: #E3B341; --mark2: #D97706;
+    --accent-tint: rgba(227,179,65,.14); --accent-tint-hi: rgba(227,179,65,.22);
+    --accent-border: rgba(227,179,65,.42); --accent-glow: rgba(227,179,65,.2);
+    --g: #4ADE80; --g-hi: #86EFAC; --g-glow: rgba(74,222,128,.32);
+    --o: #FBBF24; --o-hi: #FDE68A; --o-glow: rgba(251,191,36,.32);
+    --r: #F87171; --r-hi: #FCA5A5; --r-glow: rgba(248,113,113,.35); --err: #FCA5A5;
+    --err-border: rgba(248,113,113,.32); --err-tint: rgba(248,113,113,.1);
+    --shadow: rgba(0,0,0,.5);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      /* 干净的中性玻璃：白色半透明（macOS light material，纯白 + rgba(60,60,67,x) label 层） */
+      /* macOS 浅色材料：高不透明度（~92%），blur 只透色不透形 */
+      --bg-glass: rgba(255,255,255,.92); --bg-solid: #F6F6F6;
+      --border-glass: rgba(0,0,0,.12); --highlight: rgba(255,255,255,.9);
+      --text: rgba(0,0,0,.7); --strong: rgba(0,0,0,.92);
+      --dim: rgba(60,60,67,.66); --faint: rgba(60,60,67,.5);
+      --divider: rgba(0,0,0,.09);
+      --track: rgba(120,120,128,.22); --hover: rgba(0,0,0,.05);
+      --input-bg: rgba(120,120,128,.1);
+      --accent: #A16207; --mark1: #C98A2E; --mark2: #B45309;
+      --accent-tint: rgba(161,98,7,.1); --accent-tint-hi: rgba(161,98,7,.18);
+      --accent-border: rgba(161,98,7,.38); --accent-glow: rgba(161,98,7,.14);
+      --g: #12934F; --g-hi: #22A55C; --g-glow: rgba(18,147,79,.3);
+      --o: #A34A08; --o-hi: #C96A12; --o-glow: rgba(179,83,9,.3);
+      --r: #B01B1B; --r-hi: #D64536; --r-glow: rgba(185,28,28,.3); --err: #B91C1C;
+      --err-border: rgba(185,28,28,.3); --err-tint: rgba(185,28,28,.06);
+      --shadow: rgba(0,0,0,.18);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: transparent; }
+  body { font-family: -apple-system, "SF Pro Text", system-ui, "PingFang SC", sans-serif; -webkit-user-select: none; user-select: none; overflow: hidden; }
+  .note {
+    position: relative;
+    width: 100vw; height: 100vh; padding: 9px 11px;
+    background: var(--bg-glass);
+    -webkit-backdrop-filter: blur(40px) saturate(1.8);
+    backdrop-filter: blur(40px) saturate(1.8);
+    border: 1px solid var(--border-glass); border-radius: 16px;
+    box-shadow: 0 24px 56px var(--shadow), inset 0 1px 0 var(--highlight);
+    display: flex; flex-direction: column; color: var(--text);
+  }
+  /* 镜面高光（玻璃层，不覆盖内容层） */
+  .note::after {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(155deg, rgba(255,255,255,.12), rgba(255,255,255,0) 42%);
+  }
+  .drag-zone { position: relative; z-index: 1; height: 14px; -webkit-app-region: drag; cursor: grab; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .grip { display: inline-flex; gap: 4px; pointer-events: none; }
+  .grip i { width: 3px; height: 3px; border-radius: 50%; background: var(--faint); opacity: .5; transition: opacity .15s; }
+  .drag-zone:hover .grip i { opacity: 1; }
+  .accounts { position: relative; z-index: 1; flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+  .accounts::-webkit-scrollbar { width: 3px; }
+  .accounts::-webkit-scrollbar-thumb { background: var(--track); border-radius: 2px; }
+  .panel { padding: 8px 2px 9px; border-bottom: 1px solid var(--divider); }
+  .panel:last-child { border-bottom: none; }
+  .panel-err { background: var(--err-tint); border-radius: 10px; border-bottom-color: transparent; }
+  .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .alias { font-weight: 650; font-size: 11.5px; letter-spacing: .2px; color: var(--strong); }
+  .plan {
+    font-size: 8px; font-weight: 650; color: var(--accent);
+    letter-spacing: .6px; text-transform: uppercase; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .plan::before { content: ''; width: 3px; height: 3px; border-radius: 50%; background: var(--accent); opacity: .85; }
+  .tiers { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .tier-row { display: grid; grid-template-columns: 30px 1fr auto auto; gap: 8px; align-items: center; }
+  .tier-name { font-size: 9px; color: var(--dim); letter-spacing: .2px; }
+  .tier-bar { height: 5px; border-radius: 999px; background: var(--track); box-shadow: inset 0 1px 1.5px rgba(0,0,0,.14); }
+  .tier-bar-fill { display: block; height: 100%; border-radius: 999px; transition: width .5s ease; box-shadow: inset 0 .5px 0 rgba(255,255,255,.35), 0 0 6px var(--glow); }
+  .tier-bar-fill.g { background: linear-gradient(90deg, var(--g), var(--g-hi)); --glow: var(--g-glow); }
+  .tier-bar-fill.o { background: linear-gradient(90deg, var(--o), var(--o-hi)); --glow: var(--o-glow); }
+  .tier-bar-fill.r { background: linear-gradient(90deg, var(--r), var(--r-hi)); --glow: var(--r-glow); }
+  .tier-pct { font-size: 9.5px; font-weight: 650; font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+  .tier-pct.g { color: var(--g); }
+  .tier-pct.o { color: var(--o); }
+  .tier-pct.r { color: var(--r); }
+  .tier-reset { font-size: 8.5px; color: var(--faint); font-variant-numeric: tabular-nums; min-width: 52px; text-align: right; }
+  .err { display: flex; align-items: flex-start; gap: 4px; margin-top: 3px; font-size: 9px; color: var(--err); word-break: break-all; line-height: 1.45; }
+  .err svg { width: 10px; height: 10px; flex-shrink: 0; margin-top: 1px; }
+  .empty { text-align: center; color: var(--faint); font-size: 10.5px; padding: 48px 0; line-height: 2.1; cursor: pointer; border-radius: 10px; }
+  .empty:hover { color: var(--dim); }
+  /* ── DeepSeek 时段时间轴 ── */
+  .ds { position: relative; z-index: 1; padding: 8px 2px 1px; border-top: 1px solid var(--divider); flex-shrink: 0; }
+  .ds-head { display: flex; align-items: baseline; gap: 6px; margin-bottom: 5px; }
+  .ds-name { font-size: 9px; color: var(--dim); letter-spacing: .3px; }
+  .ds-status { margin-left: auto; font-size: 8.5px; font-weight: 650; letter-spacing: .4px; }
+  .ds-status.peak { color: var(--o); }
+  .ds-status.idle { color: var(--g); }
+  .ds-track { position: relative; height: 6px; border-radius: 999px; background: var(--track); box-shadow: inset 0 1px 1.5px rgba(0,0,0,.14); }
+  .ds-peak {
+    position: absolute; top: 0; height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--o), var(--o-hi));
+    box-shadow: inset 0 .5px 0 rgba(255,255,255,.35), 0 0 6px var(--o-glow);
+  }
+  .ds-now {
+    position: absolute; top: -2px; height: calc(100% + 4px); width: 2px; border-radius: 1px;
+    background: var(--strong); box-shadow: 0 0 4px rgba(255,255,255,.55); transform: translateX(-1px);
+  }
+  .ds-ticks { display: flex; justify-content: space-between; font-size: 7.5px; color: var(--faint); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .ds-next { font-size: 8.5px; color: var(--faint); margin-top: 2px; text-align: right; font-variant-numeric: tabular-nums; }
+  .hidden { display: none !important; }
+
+  /* ── 设置：玻璃卡片 + 填充式圆角输入 + 胶囊按钮 ── */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.38); display: flex; align-items: center; justify-content: center; z-index: 10; }
+  .modal-card {
+    background: var(--bg-glass);
+    -webkit-backdrop-filter: blur(40px) saturate(1.8);
+    backdrop-filter: blur(40px) saturate(1.8);
+    border: 1px solid var(--border-glass); border-radius: 16px;
+    width: 262px; max-height: 86vh; overflow-y: auto; padding: 14px 15px; color: var(--text);
+    box-shadow: 0 24px 56px var(--shadow), inset 0 1px 0 var(--highlight);
+  }
+  .modal-card::-webkit-scrollbar { width: 3px; }
+  .modal-card::-webkit-scrollbar-thumb { background: var(--track); border-radius: 2px; }
+  .modal-card h2 { font-size: 12px; font-weight: 650; color: var(--strong); letter-spacing: .3px; }
+  .modal-card h3 { font-size: 8.5px; text-transform: uppercase; letter-spacing: 1.2px; margin: 14px 0 6px; color: var(--faint); font-weight: 650; }
+  .modal-card label { font-size: 10px; color: var(--dim); display: flex; align-items: baseline; gap: 6px; }
+  .modal-card input {
+    width: 100%; margin-top: 4px; padding: 7px 10px; font-size: 11.5px;
+    border: 1px solid var(--border-glass); border-radius: 9px;
+    background: var(--input-bg); color: var(--strong); outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .modal-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .modal-card input::placeholder { color: var(--faint); }
+  .modal-card input[type="number"] { width: 66px; }
+  .acc-row {
+    display: flex; align-items: center; gap: 6px; font-size: 10.5px;
+    border-bottom: 1px solid var(--divider); padding: 7px 2px;
+  }
+  .acc-row:last-child { border-bottom: none; }
+  .acc-row .name { flex: 1; font-weight: 600; color: var(--strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .acc-row .ak { color: var(--faint); font-size: 9px; font-variant-numeric: tabular-nums; }
+  .mini-btn {
+    width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
+    border: none; border-radius: 8px; background: transparent; color: var(--dim); cursor: pointer; line-height: 0;
+    transition: background .15s, color .15s;
+  }
+  .mini-btn:hover { background: var(--hover); color: var(--strong); }
+  .mini-btn.del:hover { color: var(--err); }
+  .mini-btn svg { width: 11px; height: 11px; }
+  .form { display: flex; flex-direction: column; gap: 2px; }
+  .form-row { display: flex; gap: 6px; margin-top: 7px; }
+  .modal-actions { display: flex; gap: 4px; margin-top: 16px; align-items: center; }
+  .btn {
+    font-size: 10.5px; font-weight: 650; letter-spacing: .2px;
+    padding: 6px 13px; border-radius: 999px; cursor: pointer; line-height: 1;
+    border: 1px solid var(--border-glass); background: transparent; color: var(--dim);
+    transition: background .15s, color .15s, border-color .15s, transform .05s;
+  }
+  .btn:hover { background: var(--hover); color: var(--strong); }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { color: var(--accent); border-color: var(--accent-border); background: var(--accent-tint); }
+  .btn-primary:hover { background: var(--accent-tint-hi); color: var(--accent); }
+  .btn-danger { color: var(--err); }
+  .btn-danger:hover { background: var(--err-tint); color: var(--err); }
+  .push-right { margin-left: auto; }
+  .cfg-path { font-size: 8.5px; color: var(--faint); margin-top: 11px; word-break: break-all; line-height: 1.5; }
+  .btn:focus-visible, .mini-btn:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 1px; }
+  @media (prefers-reduced-motion: reduce) {
+    .tier-bar-fill { transition: none; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .note, .modal-card { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg-solid); }
+    .note::after { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="note">
+    <div class="drag-zone" title="拖动移动"><span class="grip"><i></i><i></i><i></i></span></div>
+    <div id="accounts" class="accounts"></div>
+    <div id="empty" class="empty hidden">暂无账号<br />点菜单栏图标 · 设置</div>
+    <div id="dsTimeline" class="ds">
+      <div class="ds-head">
+        <span class="ds-name">DeepSeek 时段</span>
+        <span id="dsStatus" class="ds-status">--</span>
+      </div>
+      <div class="ds-track">
+        <div class="ds-peak" style="left:37.5%; width:12.5%"></div>
+        <div class="ds-peak" style="left:58.3333%; width:16.6667%"></div>
+        <div id="dsNow" class="ds-now"></div>
+      </div>
+      <div class="ds-ticks"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+      <div id="dsNext" class="ds-next"></div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>设置</h2>
+      <h3>刷新</h3>
+      <label>自动间隔（秒）<input id="intervalInput" type="number" min="5" step="5" /></label>
+      <h3>账号</h3>
+      <div id="accountList"></div>
+      <h3>添加 / 编辑</h3>
+      <div class="form">
+        <input id="fAlias" placeholder="别名（如：主力）" />
+        <input id="fAk" placeholder="AccessKey ID" />
+        <input id="fSk" type="password" placeholder="SecretAccessKey" />
+        <input id="fRegion" placeholder="Region（默认 cn-beijing）" />
+        <div class="form-row">
+          <button id="addBtn" class="btn btn-primary">添加</button>
+          <button id="cancelEditBtn" class="btn hidden">取消编辑</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="showFolderBtn" class="btn">配置文件</button>
+        <button id="deleteAllBtn" class="btn btn-danger">删除全部</button>
+        <button id="modalCloseBtn" class="btn btn-primary push-right">完成</button>
+      </div>
+      <div id="cfgPath" class="cfg-path"></div>
+    </div>
+  </div>
+
+  <script src="../../dist/renderer/renderer.js"></script>
+</body>
+</html>
