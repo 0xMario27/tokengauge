@@ -214,27 +214,27 @@ function render() {
       panel.appendChild(head);
       const tiers = document.createElement('div');
       tiers.className = 'tiers';
-      for (const t of u.tiers) {
-        const cls = t.utilization < 70 ? 'g' : t.utilization < 90 ? 'o' : 'r';
+      for (const tier of u.tiers) {
+        const cls = tier.utilization < 70 ? 'g' : tier.utilization < 90 ? 'o' : 'r';
         const row = document.createElement('div');
         row.className = 'tier-row';
         const name = document.createElement('span');
         name.className = 'tier-name';
-        name.textContent = tierLabel(t.name);
+        name.textContent = tierLabel(tier.name);
         const bar = document.createElement('span');
         bar.className = 'tier-bar';
         const fill = document.createElement('span');
         fill.className = 'tier-bar-fill ' + cls;
-        fill.style.width = Math.min(100, Math.max(0, t.utilization)) + '%';
+        fill.style.width = Math.min(100, Math.max(0, tier.utilization)) + '%';
         bar.appendChild(fill);
         const pct = document.createElement('span');
         pct.className = 'tier-pct ' + cls;
-        pct.textContent = Math.round(t.utilization * 10) / 10 + '%';
+        pct.textContent = Math.round(tier.utilization * 10) / 10 + '%';
         const resetSpan = document.createElement('span');
         resetSpan.className = 'tier-reset';
-        if (t.resetsAt) {
-          const ms = Date.parse(t.resetsAt) - Date.now();
-          if (ms > 0) { resetSpan.dataset.reset = t.resetsAt; resetSpan.textContent = fmtReset(ms); }
+        if (tier.resetsAt) {
+          const ms = Date.parse(tier.resetsAt) - Date.now();
+          if (ms > 0) { resetSpan.dataset.reset = tier.resetsAt; resetSpan.textContent = fmtReset(ms); }
           else resetSpan.textContent = '-';
         }
         row.append(name, bar, pct, resetSpan);

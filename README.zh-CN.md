@@ -52,7 +52,7 @@ make dist-universal  # 双架构通用 dmg（体积翻倍）
 （或 `npm run dist` / `npm run dist:x64`；`make help` 查看全部命令）
 
 - 图标：`node scripts/gen-app-icon.js` 重生成母版后重跑 icns 步骤（见 scripts/）
-- **发给朋友**：把 dmg 发过去，拖入"应用程序"即可；因未做公证（需 Apple Developer 账号），
+- **发给朋友**：把 dmg 发过去，拖入"应用程序"即可；已签名但未公证（公证需 Apple Developer 账号），
   首次打开需**右键 -> 打开 -> 再点打开**（或在 系统设置 -> 隐私与安全性 -> 仍要打开）。
 - 打包版与开发版共用 `~/Library/Application Support/TokenGauge/`，且共用单实例锁，两者同时只能运行一个。
 
