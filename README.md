@@ -1,9 +1,10 @@
-# Ark 用量便签 (ark-usage-widget)
+# TokenGauge
 
-macOS 便签式小工具：展示多个火山方舟账号的 **Agent Plan / Coding Plan 用量**，显示方式与 CC Switch 一致
-（套餐标签 + 5小时/7天/每月 三档百分比徽章 + 重置倒计时，<70% 绿 / 70–89% 橙 / ≥90% 红）。
+macOS 悬浮用量看板：多账号、多供应商展示 AI 服务用量/配额/余额。**插件化 Provider 架构**，内置「火山方舟」
+（Agent Plan / Coding Plan 的 5小时/7天/每月 三档进度 + 重置倒计时，<70% 绿 / 70–89% 橙 / ≥90% 红），
+另有 DeepSeek 余额示例插件开箱即用，任何服务商都可自行接入。
 
-查询逻辑移植自 [cc-switch](https://github.com/cc-switch/CCSwitch) 的 `coding_plan.rs`：
+火山方舟查询逻辑移植自 [cc-switch](https://github.com/cc-switch/CCSwitch) 的 `coding_plan.rs`：
 火山**控制面 OpenAPI**（`open.volcengineapi.com`）+ **签名 V4**（AK/SK），先探测 `GetAFPUsage`（Agent Plan），
 未订阅自动回退 `GetCodingPlanUsage`（Coding Plan）。多账号并发查询（`Promise.allSettled`）。
 
@@ -11,22 +12,21 @@ macOS 便签式小工具：展示多个火山方舟账号的 **Agent Plan / Codi
 
 ```bash
 npm install        # 首次
-npm start          # 启动便签（无 Dock 图标，托盘常驻；托盘可显示/隐藏、刷新、退出）
+npm start          # 启动看板（无 Dock 图标，托盘常驻）
 ```
 
-- 点便签右上角 ⚙ 添加/编辑/删除账号（别名 + AccessKey ID + SecretAccessKey + Region），
-  配置自动保存到 macOS 规范目录 `~/Library/Application Support/ark-usage-widget/config.json`
-- 自动刷新默认 30 秒一次，可在设置页修改（≥5 秒），也可点 ⟳ 手动刷新
-- 便签可拖动（记位置）、跨所有桌面/全屏空间可见；✕ 隐藏到托盘
-- 「在 Finder 中显示配置」可直达配置文件；「删除全部配置」清空所有账号
+- 托盘图标：**左键显示面板，右键打开菜单**（设置… / 立即刷新 / 隐藏 / 退出）；顶部三点可拖动面板
+- 设置页添加/编辑/删除账号：先选供应商，凭据表单按其声明动态渲染
+- 配置存 macOS 规范目录 `~/Library/Application Support/TokenGauge/config.json`（权限 600）
+- 自动刷新默认 30 秒（设置页可改，≥5 秒）；面板底部固定 DeepSeek 高峰/空闲时段时间轴
 
 ## Provider 插件（贡献查询逻辑）
 
-用量查询已抽象为 Provider 契约，内置「火山方舟」。任何服务商都能以 JS 插件形式接入：
+用量查询已抽象为 Provider 契约。任何服务商都能以 JS 插件形式接入：
 
 ```bash
 # 插件目录（设置页「插件目录」按钮直达）
-~/Library/Application Support/ark-usage-widget/providers/
+~/Library/Application Support/TokenGauge/providers/
 ```
 
 **契约**：`module.exports = { id, name, fields[], query(credentials) }`
@@ -40,19 +40,18 @@ npm start          # 启动便签（无 Dock 图标，托盘常驻；托盘可�
 ## 打包分发（macOS）
 
 ```bash
-npm run dist    # 产出 release/ark-usage-widget-0.1.0-universal.dmg（Universal，Intel/Apple Silicon 通用）
+npm run dist    # 产出 release/TokenGauge-0.1.0-universal.dmg（Universal，Intel/Apple Silicon 通用）
 ```
 
 - 图标：`node scripts/gen-app-icon.js` 重生成母版后重跑 icns 步骤（见 scripts/）
 - **发给朋友**：把 dmg 发过去，拖入"应用程序"即可；因未做公证（需 Apple Developer 账号），
   首次打开需**右键 -> 打开 -> 再点打开**（或在 系统设置 -> 隐私与安全性 -> 仍要打开）。
-- 打包版与开发版共用 `~/Library/Application Support/ark-usage-widget/config.json`，
-  且共用单实例锁，两者同时只能运行一个。
+- 打包版与开发版共用 `~/Library/Application Support/TokenGauge/`，且共用单实例锁，两者同时只能运行一个。
 
 ## 开发
 
 ```bash
-npm run selftest   # 签名 V4 与档位解析的确定性自检（向量与 cc-switch 单测一致）
+npm run selftest   # 签名 V4 / 档位解析 / 配置迁移的确定性自检（向量与 cc-switch 单测一致）
 npm run build
 npx electron . --smoke   # 启动冒烟：窗口加载即自动退出
 ```

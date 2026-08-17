@@ -1,5 +1,5 @@
-// ── ark-usage-widget 插件模版：DeepSeek 余额查询 ──
-// 放到 ~/Library/Application Support/ark-usage-widget/providers/*.js 即被加载。
+// ── TokenGauge 插件模版：DeepSeek 余额查询 ──
+// 放到 ~/Library/Application Support/TokenGauge/providers/*.js 即被加载。
 // 契约：module.exports = { id, name, fields[], query(credentials) -> UsageResult }
 //   - id:     全局唯一（与内置/其他插件不重复）
 //   - fields: 设置页动态渲染的凭据字段
